@@ -1,104 +1,111 @@
 ﻿using Newtonsoft.Json.Linq;
 using OpenFin.FDC3.Constants;
 using OpenFin.FDC3.Context;
-using OpenFin.FDC3.ContextChannels;
 using OpenFin.FDC3.Intents;
 using OpenFin.FDC3.Payloads;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Fin = Openfin.Desktop;
+using Openfin.Desktop.Messaging;
+using Openfin.Desktop;
+using OpenFin.FDC3.Channels;
 
 namespace OpenFin.FDC3
 {
     internal static class Connection
     {
-        private static Fin.ChannelClient channelClient;
+        internal static Action<Exception> ConnectionInitializationComplete;
+        private static ChannelClient channelClient;
+        private static Action<ChannelChangedPayload> channelChangedHandlers { get; set; }
         private static Action<ContextBase> contextListeners { get; set; }
-        private static Action<ChannelChangedEvent> channelChangedHandlers { get; set; }
         private static List<KeyValuePair<string, Action<ContextBase>>> intentListeners { get; set; }
+        internal static void AddChannelChangedEventListener(Action<ChannelChangedPayload> handler)
+        {
+            channelChangedHandlers += handler;
+        }
 
-        internal static Action ConnectionInitializationComplete;
+        internal static void AddContextListener(Action<ContextBase> handler)
+        {
+            contextListeners += handler;
+        }
 
-        internal static void Initialize(Fin.Runtime runtimeInstance)
+        internal static void AddIntentListener(string intent, Action<ContextBase> handler)
+        {
+            intentListeners.Add(new KeyValuePair<string, Action<ContextBase>>(intent, handler));
+        }
+
+        internal static Task Broadcast(Context.ContextBase context)
+        {
+            return channelClient.DispatchAsync<Task>(ApiTopic.Broadcast, context);
+        }
+
+        internal static Task<AppIntent> FindIntent(string intent, ContextBase context)
+        {
+            return channelClient.DispatchAsync<AppIntent>(ApiTopic.FindIntent, new { intent, context });
+        }
+
+        internal static Task<AppIntent[]> FindIntentsByContext(ContextBase context)
+        {
+            return channelClient.DispatchAsync<AppIntent[]>(ApiTopic.FindIntentsByContext, context);
+        }
+
+        internal static Task<Channel[]> GetAllChannels()
+        {
+            return channelClient.DispatchAsync<Channel[]>(ApiTopic.GetAllChannels, JValue.CreateUndefined());
+        }
+
+        internal static Task<Channel> GetChannelAsync(Identity identity)
+        {
+            if (identity == null)
+            {
+                return channelClient.DispatchAsync<Channel>(ApiTopic.GetChannel, JValue.CreateUndefined());
+            }
+            else
+            {
+                return channelClient.DispatchAsync<Channel>(ApiTopic.GetChannel, new { identity });
+            }
+        }
+
+        internal static Task<Identity[]> GetChannelMembersAsync(string id)
+        {
+            return channelClient.DispatchAsync<Identity[]>(ApiTopic.GetChannelMembers, new { id });
+        }
+
+        internal static void Initialize(Runtime runtimeInstance)
         {
             intentListeners = new List<KeyValuePair<string, Action<ContextBase>>>();
             channelClient = runtimeInstance.InterApplicationBus.Channel.CreateClient(Fdc3ServiceConstants.ServiceChannel);
 
             registerChannelTopics();
             
-            channelClient.Connect().ContinueWith(x =>
-            {                
-                ConnectionInitializationComplete?.Invoke();
+            channelClient.ConnectAsync().ContinueWith(x =>
+            {
+                if (x.Exception == null)
+                    ConnectionInitializationComplete?.Invoke(x.Exception);              
             });
-        }      
-
-        internal static Task<Channel[]> GetAllChannels()
-        {
-            return channelClient.Dispatch<Channel[]>(ApiTopic.GetAllChannels, JValue.CreateUndefined());
         }
-
-        internal static Task JoinChannel(string channelId, Fin.WindowIdentity identity)
+        internal static Task JoinChannelAsync(string id, Identity identity)
         {
-            return channelClient.Dispatch<Task>(ApiTopic.JoinChannel, identity);
+            return channelClient.DispatchAsync(ApiTopic.JoinChannel, new { id, identity });
         }
-
-        internal static Task<Fin.WindowIdentity[]> GetChannel(string channelId)
-        {
-            return channelClient.Dispatch<Fin.WindowIdentity[]>(ApiTopic.GetChannel, channelId);
-        }
-
         internal static Task OpenAsync(string name, ContextBase context = null)
         {
-            return channelClient.Dispatch<string>(ApiTopic.Open, new { name, context });
+            return channelClient.DispatchAsync<string>(ApiTopic.Open, new { name, context });
         }
-
-        internal static Task<AppIntent> FindIntent(string intent, ContextBase context)
+        internal static Task<IntentResolution> RaiseIntent(string intent, ContextBase context, string target)
         {
-            return channelClient.Dispatch<AppIntent>(ApiTopic.FindIntent, new { intent, context});            
+            return channelClient.DispatchAsync<IntentResolution>(ApiTopic.RaiseIntent, new { intent, context, target });
         }
 
-        internal static Task<AppIntent[]> FindIntentsByContext(ContextBase context)
-        {
-            return channelClient.Dispatch<AppIntent[]>(ApiTopic.FindIntentsByContext, context);
-        }
-
-        internal static void AddChannelChangedEventListener(Action<ChannelChangedEvent> handler)
-        {
-            channelChangedHandlers += handler;
-        }
-
-        internal static void RemoveChannelChangedEventListener(Action<ChannelChangedEvent> handler)
+        internal static void RemoveChannelChangedEventListener(Action<ChannelChangedPayload> handler)
         {
             channelChangedHandlers -= handler;
         }
-
-        internal static Task Broadcast(Context.ContextBase context)
-        {
-            return channelClient.Dispatch<Task>(ApiTopic.Broadcast, context);
-        }
-
-        internal static Task<IntentResolution> RaiseIntent(string intent, ContextBase context, string target)
-        {
-            return channelClient.Dispatch<IntentResolution>(ApiTopic.RaiseIntent, new { intent, context, target });
-        }
-
-        internal static void AddContextListener(Action<ContextBase> handler)
-        {
-            contextListeners += handler;
-        }       
-
         internal static void UnsubcribeContextListener(Action<ContextBase> handler)
         {
             contextListeners -= handler;
         }
-
-        internal static void AddIntentListener(string intent, Action<ContextBase> handler)
-        {            
-            intentListeners.Add(new KeyValuePair<string, Action<ContextBase>>(intent, handler));            
-        }
-
         internal static void UnsubscribeIntentListener(string intent)
         {
             intentListeners.RemoveAll(x => x.Key == intent);
@@ -128,7 +135,7 @@ namespace OpenFin.FDC3
                 return null;
             });
 
-            channelClient.RegisterTopic<ChannelChangedEvent, object>(ChannelTopicConstants.Event, @event =>
+            channelClient.RegisterTopic<ChannelChangedPayload, object>(ChannelTopicConstants.Event, @event =>
             {
                 channelChangedHandlers?.Invoke(@event);
                 return null;
