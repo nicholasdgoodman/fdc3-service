@@ -48,7 +48,7 @@ namespace OpenFin.FDC3
 
         internal static Task Broadcast(Context.ContextBase context)
         {
-            return channelClient.DispatchAsync<Task>(ApiTopic.Broadcast, context);
+            return channelClient.DispatchAsync<Task>(ApiTopic.Broadcast, new { context = context });
         }
 
         internal static Task<AppIntent> FindIntentAsync(string intent, ContextBase context)
@@ -139,22 +139,28 @@ namespace OpenFin.FDC3
                 throw new NullReferenceException("ChannelClient must be created before registering topics.");
             }
 
-            channelClient.RegisterTopic<RaiseIntentPayload>(ChannelTopicConstants.Intent, payload =>
+            channelClient.RegisterTopic<RaiseIntentPayload,object>(ChannelTopicConstants.Intent, payload =>
             {
                 if(intentListeners.ContainsKey(payload.Intent))
                 {
                     intentListeners[payload.Intent].Invoke(payload.Context);
-                }                
+                }
+
+                return null;
             });
 
-            channelClient.RegisterTopic<ContextBase>(ChannelTopicConstants.Context, payload =>
+            channelClient.RegisterTopic<ContextBase,object>(ChannelTopicConstants.Context, payload =>
             {
-                contextListeners?.Invoke(payload);                
+                contextListeners?.Invoke(payload);
+
+                return null;
             });
 
-            channelClient.RegisterTopic<ChannelChangedPayload>(ChannelTopicConstants.Event, @event =>
+            channelClient.RegisterTopic<ChannelChangedPayload,object>(ChannelTopicConstants.Event, @event =>
             {
-                channelChangedHandlers?.Invoke(@event);                
+                channelChangedHandlers?.Invoke(@event);
+
+                return null;
             });
         }
     }

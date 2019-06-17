@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFin.FDC3", "OpenFin.FDC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFin.FDC3.Tests", "OpenFin.FDC3.Tests\OpenFin.FDC3.Tests.csproj", "{88DD9410-769E-417C-ACCD-83D538F2026F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFin.FDC3.Demo", "OpenFin.FDC3.Demo\OpenFin.FDC3.Demo.csproj", "{4A8BFDFB-1762-476D-A7ED-CBEF8CBFA97B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{88DD9410-769E-417C-ACCD-83D538F2026F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{88DD9410-769E-417C-ACCD-83D538F2026F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{88DD9410-769E-417C-ACCD-83D538F2026F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A8BFDFB-1762-476D-A7ED-CBEF8CBFA97B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A8BFDFB-1762-476D-A7ED-CBEF8CBFA97B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A8BFDFB-1762-476D-A7ED-CBEF8CBFA97B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A8BFDFB-1762-476D-A7ED-CBEF8CBFA97B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
